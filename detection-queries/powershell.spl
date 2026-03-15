@@ -1,0 +1,45 @@
+# PowerShell Detection Queries (Event ID 4104 - Script Block Logging)
+
+# All Script Block Logging events
+index=windows EventCode=4104
+| table _time, ScriptBlockText, Path, host
+
+# ---
+
+# Encoded Command Execution (MITRE T1059.001 - common obfuscation)
+index=windows EventCode=4104
+| search ScriptBlockText="*-EncodedCommand*" OR ScriptBlockText="*-enc *" OR ScriptBlockText="*-e *"
+| table _time, ScriptBlockText, Path, host
+
+# ---
+
+# Download Cradles (web-based payload retrieval)
+index=windows EventCode=4104
+| search ScriptBlockText="*DownloadString*" OR ScriptBlockText="*DownloadFile*"
+       OR ScriptBlockText="*WebClient*" OR ScriptBlockText="*Invoke-WebRequest*"
+       OR ScriptBlockText="*iwr *" OR ScriptBlockText="*curl *"
+| table _time, ScriptBlockText, Path, host
+
+# ---
+
+# Common PowerShell Attack Techniques
+index=windows EventCode=4104
+| search ScriptBlockText="*Invoke-Mimikatz*" OR ScriptBlockText="*Invoke-Empire*"
+       OR ScriptBlockText="*PowerSploit*" OR ScriptBlockText="*Invoke-ReflectivePEInjection*"
+       OR ScriptBlockText="*Add-MpPreference*" OR ScriptBlockText="*Set-MpPreference*"
+| table _time, ScriptBlockText, host
+
+# ---
+
+# Bypass Execution Policy (common in attacker tooling)
+index=windows EventCode=4104
+| search ScriptBlockText="*-ExecutionPolicy Bypass*" OR ScriptBlockText="*-ep bypass*"
+| table _time, ScriptBlockText, Path, host
+
+# ---
+
+# AMSI Bypass Attempts
+index=windows EventCode=4104
+| search ScriptBlockText="*amsiInitFailed*" OR ScriptBlockText="*AmsiScanBuffer*"
+       OR ScriptBlockText="*[Ref].Assembly*"
+| table _time, ScriptBlockText, host

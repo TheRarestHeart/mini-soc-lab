@@ -1,0 +1,46 @@
+# Authentication Detection Queries
+
+# Failed Logon / Brute Force (5+ failures by same account)
+index=windows EventCode=4625
+| stats count by Account_Name, src_ip, host
+| where count > 5
+| sort -count
+
+# ---
+
+# Successful Logon After Multiple Failures (detect credential stuffing success)
+index=windows (EventCode=4625 OR EventCode=4624)
+| stats count(eval(EventCode=4625)) as failures,
+         count(eval(EventCode=4624)) as successes by Account_Name
+| where failures > 5 AND successes > 0
+
+# ---
+
+# Account Lockout
+index=windows EventCode=4740
+| table _time, Account_Name, src_ip, host
+
+# ---
+
+# Privilege Escalation - Special Privileges Assigned (filter out SYSTEM noise)
+index=windows EventCode=4672
+| stats count by Account_Name, Privileges, host
+| where NOT Account_Name="SYSTEM"
+
+# ---
+
+# New Account Created
+index=windows EventCode=4720
+| table _time, Sam_Account_Name, Subject_Account_Name, host
+
+# ---
+
+# User Added to Security Group
+index=windows EventCode=4728
+| table _time, Member_Security_ID, Group_Name, Subject_Account_Name, host
+
+# ---
+
+# Service Installed (persistence indicator)
+index=windows EventCode=7045
+| table _time, Service_Name, Service_File_Name, Service_Account, host

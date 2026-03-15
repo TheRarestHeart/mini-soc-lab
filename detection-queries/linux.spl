@@ -1,0 +1,44 @@
+# Linux Detection Queries
+
+# SSH Brute Force (10+ failed attempts from same IP)
+index=main sourcetype=linux_secure "Failed password"
+| rex field=_raw "Failed password for (?:invalid user )?(?<user>\S+) from (?<src_ip>\S+)"
+| stats count by user, src_ip
+| where count > 10
+| sort -count
+
+# ---
+
+# Successful SSH Login After Failures
+index=main sourcetype=linux_secure
+| rex field=_raw "(?<status>Failed password|Accepted password|Accepted publickey) for (?<user>\S+) from (?<src_ip>\S+)"
+| stats count(eval(status="Failed password")) as failures,
+         count(eval(status="Accepted password" OR status="Accepted publickey")) as successes by user, src_ip
+| where failures > 5 AND successes > 0
+
+# ---
+
+# All Successful SSH Logins
+index=main sourcetype=linux_secure "Accepted"
+| rex field=_raw "Accepted (?<method>\S+) for (?<user>\S+) from (?<src_ip>\S+)"
+| table _time, user, src_ip, method, host
+
+# ---
+
+# Sudo Usage (privilege escalation)
+index=main sourcetype=linux_secure "sudo"
+| rex field=_raw "(?<user>\S+) : .*COMMAND=(?<command>.+)"
+| table _time, user, command, host
+
+# ---
+
+# New User Created on Linux
+index=main sourcetype=linux_secure "new user"
+| table _time, _raw, host
+
+# ---
+
+# Kernel Errors / Module Loading
+index=main sourcetype=linux_kernel
+| search _raw="*module*" OR _raw="*error*" OR _raw="*segfault*"
+| table _time, _raw, host

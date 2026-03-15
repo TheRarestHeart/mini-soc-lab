@@ -1,0 +1,55 @@
+# Endpoint Detection Queries (Sysmon + Event ID 4688)
+
+# Process Creation with Command Line (Event ID 4688)
+# Requires: Audit Process Creation enabled + Command Line logging enabled
+index=windows EventCode=4688
+| table _time, New_Process_Name, Process_Command_Line, Creator_Process_Name, Account_Name, host
+
+# ---
+
+# Suspicious Process Spawns (cmd/powershell/wscript from Office or browser)
+index=windows EventCode=4688
+| search Creator_Process_Name="*winword*" OR Creator_Process_Name="*excel*" OR Creator_Process_Name="*outlook*"
+| search New_Process_Name="*cmd*" OR New_Process_Name="*powershell*" OR New_Process_Name="*wscript*"
+| table _time, Creator_Process_Name, New_Process_Name, Process_Command_Line, Account_Name, host
+
+# ---
+
+# Sysmon - All Process Creations
+index=sysmon EventCode=1
+| table _time, Image, CommandLine, ParentImage, User, host
+
+# ---
+
+# Sysmon - Suspicious Parent/Child Relationships
+index=sysmon EventCode=1
+| search ParentImage="*winword.exe*" OR ParentImage="*excel.exe*" OR ParentImage="*outlook.exe*"
+| table _time, ParentImage, Image, CommandLine, User, host
+
+# ---
+
+# Sysmon - Outbound Network Connections
+index=sysmon EventCode=3
+| table _time, Image, DestinationIp, DestinationPort, DestinationHostname, User, host
+| where NOT DestinationIp="127.0.0.1" AND NOT DestinationIp="::1"
+
+# ---
+
+# Sysmon - Connections to Non-Standard Ports (potential C2)
+index=sysmon EventCode=3
+| where NOT (DestinationPort=80 OR DestinationPort=443 OR DestinationPort=53)
+| table _time, Image, DestinationIp, DestinationPort, User, host
+| sort -_time
+
+# ---
+
+# Sysmon - DNS Queries (Event ID 22)
+index=sysmon EventCode=22
+| table _time, Image, QueryName, QueryResults, User, host
+
+# ---
+
+# Sysmon - File Created in Temp/AppData (dropper activity)
+index=sysmon EventCode=11
+| search TargetFilename="*\\Temp\\*" OR TargetFilename="*\\AppData\\Roaming\\*"
+| table _time, Image, TargetFilename, User, host

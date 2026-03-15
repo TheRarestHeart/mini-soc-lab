@@ -1,0 +1,18 @@
+# Ignore sensitive files - never commit credentials or private IPs
+*.env
+*.key
+*.pem
+secrets/
+private/
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore editor files
+.vscode/
+*.swp
+*~
+
+# Ignore screenshots with sensitive data
+# screenshots/ is intentionally empty - add your own sanitized ones
